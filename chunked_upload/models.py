@@ -120,15 +120,15 @@ class MultiChunkedUpload(ChunkedUpload):
     @property
     def chunk_dir(self):
         if getattr(self, '_chunk_dir', None) is None:
-            self._chunk_dir = os.path.join([
-                os.path.dirname(self.file.path, self.upload_id)
-            ])
+            self._chunk_dir = os.path.join(
+                os.path.dirname(self.file.path), self.upload_id
+            )
+            if not os.path.exists(self._chunk_dir):
+                os.mkdir(self._chunk_dir)
         return self._chunk_dir
 
     def save(self, *args, **kwargs):
         saved = super().save(*args, **kwargs)
-        if not os.path.exists(self.chunk_dir):
-            os.mkdir(self.chunk_dir)
 
     def delete(self, *args, **kwargs):
         deleted = super().delete(*args, **kwargs)

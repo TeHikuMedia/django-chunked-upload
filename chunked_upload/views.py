@@ -306,7 +306,7 @@ class MultiChunkedUploadView(ChunkedUploadView):
             chunked_upload = get_object_or_404(self.get_queryset(request),
                                                upload_id=upload_id)
             self.is_valid_chunked_upload(chunked_upload)
-            chunk_index = request.POST.get('chunk_index')
+            chunk_index = int(request.POST.get('chunk_index'))
         else:
             attrs = {'filename': chunk.name}
 
