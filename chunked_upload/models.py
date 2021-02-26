@@ -1,5 +1,7 @@
 import hashlib
 import uuid
+import glob
+import os
 
 from django.db import models
 from django.conf import settings
@@ -97,3 +99,67 @@ class ChunkedUpload(AbstractChunkedUpload):
         null=DEFAULT_MODEL_USER_FIELD_NULL,
         blank=DEFAULT_MODEL_USER_FIELD_BLANK
     )
+
+
+class MultiChunkedUpload(ChunkedUpload):
+
+    def assemble_chunks(self):
+        files =  sorted(glob.glob(self.chunk_dir+'/*'))
+        for file in files:
+            with open(self.file.path, mode='ab') as write_file:
+                with open(file, 'rb') as read_file:
+                    write_file.write(read_file.read())
+
+    @property
+    def assembled(self):
+        if getattr(self, '_assembled', None) is None:
+            self.assemble_chunks()
+            self._assembled = True
+        return self._assembled
+    
+    @property
+    def chunk_dir(self):
+        if getattr(self, '_chunk_dir', None) is None:
+            self._chunk_dir = os.path.join(
+                os.path.dirname(self.file.path), self.upload_id
+            )
+            if not os.path.exists(self._chunk_dir):
+                os.mkdir(self._chunk_dir)
+        return self._chunk_dir
+
+    def save(self, *args, **kwargs):
+        saved = super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        deleted = super().delete(*args, **kwargs)
+        if os.path.exists(self.chunk_dir):
+            files = glob.glob(self.chunk_dir+'/*')
+            for f in files:
+                os.remove(f)
+            os.remove(self.chunk_dir)
+
+    def append_chunk(self, chunk, chunk_index, chunk_size=None, save=True):
+        self.file.close()
+        file = f"{self.chunk_dir}/{chunk_index:012d}.dat"
+        with open(file, mode='wb') as file_obj:
+            file_obj.write(chunk.read())
+        if chunk_size is not None:
+            self.offset += chunk_size
+        elif hasattr(chunk, 'size'):
+            self.offset += chunk.size
+        else:
+            self.offset = self.file.size
+        self._md5 = None  # Clear cached md5
+        if save:
+            self.save()
+        self.file.close()  # Flush
+
+    @property
+    def md5(self):
+        assmbled = self.assembled
+        if getattr(self, '_md5', None) is None:
+            md5 = hashlib.md5()
+            for chunk in self.file.chunks():
+                md5.update(chunk)
+            self._md5 = md5.hexdigest()
+        return self._md5
