@@ -136,7 +136,7 @@ class MultiChunkedUpload(ChunkedUpload):
             files = glob.glob(self.chunk_dir+'/*')
             for f in files:
                 os.remove(f)
-            os.remove(self.chunk_dir)
+            os.rmdir(self.chunk_dir)
 
     def append_chunk(self, chunk, chunk_index, chunk_size=None, save=True):
         self.file.close()
