@@ -2,7 +2,7 @@ import hashlib
 import uuid
 import glob
 import os
-
+from subprocess import Popen, PIPE
 from django.db import models
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
@@ -104,11 +104,14 @@ class ChunkedUpload(AbstractChunkedUpload):
 class MultiChunkedUpload(ChunkedUpload):
 
     def assemble_chunks(self):
-        files =  sorted(glob.glob(self.chunk_dir+'/*'))
-        for file in files:
-            with open(self.file.path, mode='ab') as write_file:
-                with open(file, 'rb') as read_file:
-                    write_file.write(read_file.read())
+        cmd = [
+            'cat', self.chunk_dir+'/*', '>', self.file.path
+        ]
+        p = Popen(cmd, stderr=PIPE, stdout=PIPE)
+        out, err = p.communicate()
+        if os.path.exists(self.file.path):
+            return True
+        return False
 
     @property
     def assembled(self):
