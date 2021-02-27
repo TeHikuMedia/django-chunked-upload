@@ -105,8 +105,8 @@ class MultiChunkedUpload(ChunkedUpload):
 
     def assemble_chunks(self):
         files =  sorted(glob.glob(self.chunk_dir+'/*'))
-        for file in files:
-            with open(self.file.path, mode='ab') as write_file:
+        with open(self.file.path, mode='ab') as write_file:
+            for file in files:
                 with open(file, 'rb') as read_file:
                     write_file.write(read_file.read())
 
